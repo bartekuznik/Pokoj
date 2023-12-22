@@ -2,3 +2,5 @@ django
 djangorestframework
 django-cors-headers
 gunicorn
+daphne
+channels

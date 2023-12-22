@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-p-u&bsh5s3owxg)2xl+#yghj#8-6gme%uz0+*5(a$b00pj-_1b
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
@@ -38,6 +38,8 @@ CORS_ALLOWED_CREDENTIALS = True
 # Application definition
 
 INSTALLED_APPS = [
+    'channels',
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -47,9 +49,17 @@ INSTALLED_APPS = [
     'rest_framework',
     'app2',
     'corsheaders',
-    'channels',
+
 ]
 
+ASGI_APPLICATION = 'Room_Server.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default':{
+        'BACKEND':'channels.layers.InMemoryChannelLayer'
+    }
+}
+# WSGI_APPLICATION = 'Room_Server.wsgi.application'
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
@@ -79,9 +89,8 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'Room_Server.wsgi.application'
 
-
+# WSGI_APPLICATION = 'Room_Server.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
