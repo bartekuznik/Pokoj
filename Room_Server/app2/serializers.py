@@ -6,21 +6,19 @@ class PlayerGameSerializer(serializers.ModelSerializer):
         model = PlayerInGame
         fields = [
             'player_id',
-            'is_win',
+            'player_nick'
             'card_1',
             'card_2',
+            'tokens',
+            'winPercentage'
         ]
 
 class RoomSerializer(serializers.ModelSerializer):
     class Meta:
         model = Room
         fields = [
-            'card_1',
-            'card_2',
-            'card_3',
-            'card_4',
-            'card_5',
-            'max_player_num',
-            'current_player_num',
-            'coins'
+            'cardsOnTable',
+            'nextPlayer',
+            'tokensOnTable',
+            'lastCall'
         ]
