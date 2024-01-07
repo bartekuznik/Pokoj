@@ -4,3 +4,6 @@ django-cors-headers
 gunicorn
 daphne
 channels
+numpy
+scipy
+joblib

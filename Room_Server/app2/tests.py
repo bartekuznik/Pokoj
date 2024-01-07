@@ -32,6 +32,4 @@ class CreateNewPlayer(TestCase):
             tokens=500,
         )
         newPlayer.save()
-        self.assertTrue(
-            hasattr(newPlayer, 'player_id')
-        )
+

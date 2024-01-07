@@ -3,7 +3,7 @@ from django.db import models
 
 
 class PlayerInGame(models.Model):
-    player_id = models.PositiveIntegerField(unique=True,default=True)
+    # player_id = models.PositiveIntegerField(unique=True,default=True)
     player_nick = models.TextField(max_length=200)
     card_1 = models.CharField(max_length=20,null=True)
     card_2 = models.CharField(max_length=20,null=True)

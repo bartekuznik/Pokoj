@@ -5,7 +5,6 @@ class PlayerGameSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlayerInGame
         fields = [
-            'player_id',
             'player_nick'
             'card_1',
             'card_2',
