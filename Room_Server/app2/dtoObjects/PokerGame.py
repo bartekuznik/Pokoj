@@ -18,21 +18,17 @@ class PokerGame:
         self.cardsOnTable = []
         self.cards = []
         self.tableCards = []
-
-
+        self.movesCounter = 0
 
     def nextPlayer(self):
-        print("VERY IMPORTANT",self.playersInGame)
+        print("VERY IMPORTANT", self.playersInGame)
         for index, player in enumerate(self.playersInGame):
+            print("HEEEEEEEEEEEERE", self.playerInMove)
+            print(player.nick, index, (index + 1) % len(self.playersInGame) )
             if player.nick == self.playerInMove:
-                try:
-                    self.playerInMove = self.playersInGame[(index + 1)].nick
-                except:
-                    self.round += 1
-                    self.playerInMove = ""
+
+                self.playerInMove = self.playersInGame[(index + 1) % len(self.playersInGame)].nick
                 break
-        else:
-            self.playerInMove = self.playersInGame[0].nick
 
     def getPlayersInGame(self):
         return len(self.playersInGame)
@@ -53,10 +49,16 @@ class PokerGame:
     def bet(self, move):
         self.lastCall = move.amount
         self.tokensOnTable += move.amount
+        self.movesCounter += 1
 
     def call(self, move):
-        self.lastCall = move.amount
-        self.tokensOnTable += move.amount
+        self.tokensOnTable += self.lastCall
+        self.movesCounter += 1
+        if self.movesCounter >= len(self.playersInGame):
+            self.round += 1
+            self.movesCounter = 0
+            return True
+        return False
 
     def fold(self, move):
         for player in self.playersInGame:
@@ -69,7 +71,7 @@ class PokerGame:
         for player in self.playersInGame:
             player.card1 = self.cards.pop(0)
             player.card2 = self.cards.pop(0)
-        self.playerInMove = self.playersInGame[0].nick
+        self.playerInMove = self.playersInGame[2%len(self.playersInGame)].nick
         self.isRunning = True
         return self.playersInGame[0], self.playersInGame[1]
 
@@ -104,12 +106,11 @@ class PokerGame:
 
     def calculateBestHand(self):
         if len(self.cardsOnTable) == 5:
-            for  player in self.playersInGame:
+            for player in self.playersInGame:
                 player.winPercentage = 0
                 return
         holdem_game = self.create_holdem_calculator()
         a_dict = holdem_game.simulate()
-
 
         result_dict = {}
 
@@ -118,8 +119,9 @@ class PokerGame:
                 player_id = int(key.split()[1])
                 result_dict[player_id] = value
 
-        for id,player in enumerate(self.playersInGame):
-            player.winPercentage = result_dict[id+1]
+        for id, player in enumerate(self.playersInGame):
+            player.winPercentage = result_dict[id + 1]
+
     def create_holdem_calculator(self):
         holdem_game = HoldemTable(num_players=len(self.playersInGame), deck_type='full')
         for id, player in enumerate(self.playersInGame):
@@ -130,13 +132,15 @@ class PokerGame:
             new_list.append(self.convert_cart_to_lib_poker(card))
         holdem_game.add_to_community(new_list)
         return holdem_game
+
     def getWinner(self):
         holdem_game = self.create_holdem_calculator()
         winner_string = holdem_game.view_result()
-        for i in range(1,len(self.playersInGame)+1):
+        for i in range(1, len(self.playersInGame) + 1):
             if str(i) in winner_string:
-                return self.playersInGame[i-1].nick
-    def endGame(self):
+                return self.playersInGame[i - 1].nick
+
+    def resetGame(self):
         self.allPlayers = copy(self.watchers)
         self.playersInGame = copy(self.watchers)
         self.playerInMove = ""
@@ -147,3 +151,4 @@ class PokerGame:
         self.cards = []
         self.tableCards = []
         self.isRunning = False
+        self.movesCounter = 0

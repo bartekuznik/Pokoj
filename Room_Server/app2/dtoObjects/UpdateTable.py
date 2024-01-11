@@ -6,6 +6,7 @@ class UpdateTable:
         self.nextPlayer = roomData["nextPlayer"]
         self.tokensOnTable = roomData["tokensOnTable"]
         self.lastCall = roomData["lastCall"]
+        self.isFinished = roomData["isFinished"]
         self.playersInGame = playersInGame
 
 
@@ -16,5 +17,6 @@ class UpdateTable:
             "nextPlayer": self.nextPlayer,
             "tokensOnTable": self.tokensOnTable,
             "lastCall": self.lastCall,
+            "isFinished": self.isFinished,
             'playersInGame': self.playersInGame,
         }

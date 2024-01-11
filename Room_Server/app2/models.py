@@ -16,3 +16,4 @@ class Room(models.Model):
     nextPlayer = models.CharField(max_length=200)
     tokensOnTable = models.PositiveIntegerField(default=0)
     lastCall = models.PositiveIntegerField(default=0)
+    isFinished = models.BooleanField(default=False)

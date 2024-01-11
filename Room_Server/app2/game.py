@@ -44,7 +44,7 @@ class GameConsumer(AsyncWebsocketConsumer):
                 card_1=None,
                 card_2=None,
                 tokens=data["tokens"],
-                winPercentage=None
+                winPercentage=None,
             )
             await reset_id(PlayerInGame)
             await save_model(watcher)
@@ -63,18 +63,12 @@ class GameConsumer(AsyncWebsocketConsumer):
                 print("LETSGO")
                 if not self.game.isRunning:
 
-                    A, B = self.game.startGame()
-                    await decrease_player_money(A.nick,50)
-                    await decrease_player_money(B.nick,100)
-                    await update_player_card(A.nick,A.card1,A.card2)
-                    await update_player_card(B.nick,B.card1,B.card2)
-                    await increase_room_tokens(50)
-                    await increase_room_tokens(100)
-                    await nextPlayer(self.game.playerInMove)
-                    await get_room_card(self.game)
-                    await get_room_card(self.game)
-                    await get_room_card(self.game)
-                    await self.updateTable()
+                    await self.beginGame()
+
+                    # await get_room_card(self.game)
+                    # await get_room_card(self.game)
+                    # await get_room_card(self.game)
+                    # await self.updateTable()
 
             elif len(self.game.watchers) == 1:
                 roomData = await get_model("Room")
@@ -95,18 +89,50 @@ class GameConsumer(AsyncWebsocketConsumer):
             match (move.moveType):
                 case "Bet":
                     self.game.bet(move)
-                    await decrease_player_money(move.nick,move.amount)
-                    await increase_room_tokens(move.amount)
+                    await decrease_player_money(move.nick,move.amount + self.game.lastCall)
+                    await increase_room_tokens(move.amount,True)
                     self.game.nextPlayer()
                     await nextPlayer(self.game.playerInMove)
                     await self.updateTable()
                 case "Call":
-                    self.game.call(move)
-                    await decrease_player_money(move.nick, move.amount)
-                    await increase_room_tokens(move.amount)
-                    self.game.nextPlayer()
-                    await nextPlayer(self.game.playerInMove)
-                    await self.updateTable()
+                    new_card = self.game.call(move)
+                    if new_card:
+                        if self.game.round == 1:
+                            await get_room_card(self.game)
+                            await get_room_card(self.game)
+                            await get_room_card(self.game)
+                            self.game.calculateBestHand()
+                            await setPlayersWinrate(self.game.playersInGame)
+                        elif self.game.round == 4:
+                            ...
+                        else:
+                            await get_room_card(self.game)
+                            if len(self.game.cardsOnTable) != 5:
+                                # await setPlayersWinrate(self.game.playersInGame)
+                                self.game.calculateBestHand()
+                                await setPlayersWinrate(self.game.playersInGame)
+                    if self.game.round != 4:
+                        await decrease_player_money(move.nick, self.game.lastCall)
+                        await increase_room_tokens(move.amount)
+                        self.game.nextPlayer()
+                        await nextPlayer(self.game.playerInMove)
+                        await self.updateTable()
+                    else:
+                        #koniec
+                        winner = self.game.getWinner()
+                        # print("WINNER",winner)
+                        tokens = await get_room_tokens()
+                        # print(tokens,"CZASH")
+                        await increase_player_tokens(winner,tokens)
+                        await set_room_isFinished(True)
+                        await nextPlayer("")
+                        await self.updateTable()
+                        await asyncio.sleep(10)
+                        self.game.resetGame()
+
+                        await set_room_isFinished(False)
+                        await self.beginGame()
+
                 case "Fold":
                     self.game.fold(move)
                     await reset_player_cards(move.nick)
@@ -115,47 +141,44 @@ class GameConsumer(AsyncWebsocketConsumer):
                     await self.updateTable()
                 case _:
                     ...
-            print("MOREEEEEEEE")
-            if self.game.playerInMove == "":
-                if self.game.round ==4:
-                    winner = self.game.getWinner()
-                    print("WINNER",winner)
-                    tokens = await get_room_tokens()
-                    print(tokens,"CZASH")
-                    await increase_player_tokens(winner,tokens)
-                    await self.updateTable()
-                    self.game.endGame()
-                    await self.beginGame()
 
-                else:
-                    self.game.calculateBestHand()
-                    await setPlayersWinrate(self.game.playersInGame)
-                    await asyncio.sleep(1)
-                    self.game.nextPlayer()
-                    await nextPlayer(self.game.playerInMove)
-                    await get_room_card(self.game)
-                    await self.updateTable()
+
+
+            print("MOREEEEEEEE")
+            # if self.game.playerInMove == "":
+            #     if self.game.round ==4:
+            #         winner = self.game.getWinner()
+            #         print("WINNER",winner)
+            #         tokens = await get_room_tokens()
+            #         print(tokens,"CZASH")
+            #         await increase_player_tokens(winner,tokens)
+            #         await self.updateTable()
+            #         self.game.endGame()
+            #         await self.beginGame()
+            #
+            #     else:
+            #         self.game.calculateBestHand()
+            #         await setPlayersWinrate(self.game.playersInGame)
+            #         await asyncio.sleep(1)
+            #         self.game.nextPlayer()
+            #         await nextPlayer(self.game.playerInMove)
+            #         await get_room_card(self.game)
+            #         await self.updateTable()
 
     async def beginGame(self):
-
-        #TODO nie chce mi się neich ktoś zrobi zaczynainie 2giej partii
-
-
-
-
+        A, B = self.game.startGame()
+        await reset_table_cards()
+        self.game.cardsOnTable = []
+        await decrease_player_money(A.nick, 50)
+        await decrease_player_money(B.nick, 100)
+        self.game.lastCall = 100
+        for player in self.game.playersInGame:
+            await update_player_card(player.nick, player.card1, player.card2)
+        await increase_room_tokens(50,True)
+        await increase_room_tokens(100,True)
+        await nextPlayer(self.game.playerInMove)
+        await self.updateTable()
         print("dupa")
-        # jsonMove = json.dumps(move.to_json(), indent=2)
-        #
-        # move_dict = move.to_json()
-        # print(move_dict, type(move_dict))
-        # # print(move.to_json())
-        # await self.channel_layer.group_send(
-        #     self.chat_room,
-        #     {
-        #         'type': 'move.message',
-        #         'message': move_dict
-        #     }
-        # )
     async def updateTable(self):
         roomData = await get_model("Room")
         playersData = await get_model("PlayerInGame")
@@ -169,8 +192,6 @@ class GameConsumer(AsyncWebsocketConsumer):
             }
         )
 
-    async def endGame(self):
-        winner = self.game.findWinner()
     async def move_message(self, event):
         message = event['message']
 
@@ -241,6 +262,16 @@ def get_room_card(pokerGame: PokerGame):
     room.cardsOnTable = new_list
     room.save()
 @sync_to_async()
+def reset_table_cards():
+    room = Room.objects.get(id=1)
+    room.cardsOnTable = []
+    room.save()
+@sync_to_async()
+def set_room_isFinished(isFinished):
+    room = Room.objects.get(id=1)
+    room.isFinished = isFinished
+    room.save()
+@sync_to_async()
 def setPlayersWinrate(players:list[SmallPlayer]):
     for player in players:
         playerInGame = PlayerInGame.objects.get(player_nick=player.nick)
@@ -260,10 +291,14 @@ def nextPlayer(nick):
     room.nextPlayer = nick
     room.save()
 @sync_to_async()
-def increase_room_tokens(amount):
+def increase_room_tokens(amount=0, bet=False):
     room = Room.objects.get(id=1)
-    room.tokensOnTable += amount
-    room.lastCall = amount
+
+    if bet:
+        room.tokensOnTable += amount
+        room.lastCall = amount
+    else:
+        room.tokensOnTable += room.lastCall
     room.save()
 
 @sync_to_async()
