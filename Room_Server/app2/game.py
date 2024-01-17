@@ -13,12 +13,7 @@ from asgiref.sync import sync_to_async
 from .serializers import *
 from django.forms.models import model_to_dict
 import asyncio
-from asgiref.sync import async_to_sync
-import os
-import glob
-from django.db import transaction
-from django.db.utils import IntegrityError
-from time import sleep
+import httpx
 
 
 class GameConsumer(AsyncWebsocketConsumer):
@@ -31,6 +26,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_add(
             self.chat_room,
             self.channel_name)
+
 
 
     async def receive(self, text_data):
@@ -48,7 +44,7 @@ class GameConsumer(AsyncWebsocketConsumer):
             )
             await reset_id(PlayerInGame)
             await save_model(watcher)
-
+            await self.update_occupancy()
             self.game.addWatcher(
                 SmallPlayer(
                     data["player_nick"],
@@ -124,9 +120,11 @@ class GameConsumer(AsyncWebsocketConsumer):
                         tokens = await get_room_tokens()
                         # print(tokens,"CZASH")
                         await increase_player_tokens(winner,tokens)
+                        await self.update_data_in_rankingomat()
                         await set_room_isFinished(True)
                         await nextPlayer("")
-                        await self.updateTable()
+                        update_task = asyncio.create_task(self.updateTable())
+                        await update_task
                         await asyncio.sleep(10)
                         self.game.resetGame()
 
@@ -212,6 +210,26 @@ class GameConsumer(AsyncWebsocketConsumer):
             self.chat_room,
             self.channel_name
         )
+    async def update_data_in_rankingomat(self):
+        players = await get_model("PlayerInGame")
+        for player in players:
+            name = player['player_nick']
+            tokens = player['tokens']
+            data = {'username': name, 'tokens': tokens}
+            async with httpx.AsyncClient() as client:
+                url = "http://localhost:8001/update_tokens/"
+                response = await client.post(url, json=data)
+                print(response, "POOOOOOOOOMOCY")
+                return response
+    async def update_occupancy(self):
+        occupancy = await get_model("PlayerInGame")
+        occupancy = len(occupancy)
+        data = {'occupancy': occupancy}
+        async with httpx.AsyncClient() as client:
+            url = "http://localhost:8002/update/"
+            response = await client.post(url, json=data)
+            print(response, "POOOOOOOOOMOCYZZZZZZZZZZZZZ")
+            return response
 
 @sync_to_async()
 def get_model(model):
