@@ -9,7 +9,7 @@ class PlayerInGame(models.Model):
     card_2 = models.CharField(max_length=20,null=True)
     tokens = models.IntegerField(default=0)
     winPercentage = models.FloatField(null=True)
-    ip_address = models.CharField(max_length=15, default = "")
+    ip_address = models.CharField(max_length=15, default = "", null=True)
 
 
 class Room(models.Model):
