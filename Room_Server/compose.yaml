@@ -11,9 +11,9 @@ services:
   server:
     build:
       context: .
-    command: python manage.py runserver 0.0.0.0:8000
+    command: python manage.py runserver 0.0.0.0:9000
     ports:
-      - 8000:8000
+      - 9000:9000
     volumes:
       - ./db.sqlite3:/app/db.sqlite3
 # The commented out section below is an example of how to define a PostgreSQL

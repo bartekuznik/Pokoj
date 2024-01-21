@@ -46,8 +46,8 @@ USER appuser
 COPY . .
 
 # Expose the port that the application listens on.
-EXPOSE 8000
+EXPOSE 9000
 
 # Run the application.
-#CMD gunicorn 'Room_Server.asgi:application' --bind=0.0.0.0:8000
-CMD daphne -b 0.0.0.0 -p 8000 Room_Server.asgi:application
+#CMD gunicorn 'Room_Server.asgi:application' --bind=0.0.0.0:9000
+CMD daphne -b 0.0.0.0 -p 9000 Room_Server.asgi:application
