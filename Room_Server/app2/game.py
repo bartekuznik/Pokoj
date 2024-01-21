@@ -23,24 +23,26 @@ class GameConsumer(AsyncWebsocketConsumer):
         # room
         self.chat_room = "game"
         # self.game.addWatcher()
+        client_ip = self.scope['client'][0]
+        client_port = self.scope['client'][1]
+        self.ip_address = f"{client_ip}:{client_port}"  # Combine IP and port
         await self.channel_layer.group_add(
             self.chat_room,
             self.channel_name)
-
-
 
     async def receive(self, text_data):
         print(text_data)
         data = json.loads(text_data)
 
         if data["type"] == "PlayerInfo":
-            print("hejo")
+            print("WELCOME_PLAYER")
             watcher = PlayerInGame(
                 player_nick=data["player_nick"],
                 card_1=None,
                 card_2=None,
                 tokens=data["tokens"],
                 winPercentage=None,
+                ip_address=self.ip_address
             )
             await reset_id(PlayerInGame)
             await save_model(watcher)
@@ -56,9 +58,8 @@ class GameConsumer(AsyncWebsocketConsumer):
             )
             print(len(self.game.watchers), self.game.watchers, "HHHHHHHHHHHHHHHEEEEEEEEE")
             if len(self.game.watchers) == 2:
-                print("LETSGO")
+                print("FIRST_GAME_RUN_2")
                 if not self.game.isRunning:
-
                     await self.beginGame()
 
                     # await get_room_card(self.game)
@@ -116,18 +117,20 @@ class GameConsumer(AsyncWebsocketConsumer):
                     else:
                         #koniec
                         winner = self.game.getWinner()
-                        # print("WINNER",winner)
+                        print("WINNER",winner)
                         tokens = await get_room_tokens()
-                        # print(tokens,"CZASH")
+                        print(tokens,"CZASH")
                         await increase_player_tokens(winner,tokens)
                         await self.update_data_in_rankingomat()
                         await set_room_isFinished(True)
                         await nextPlayer("")
                         update_task = asyncio.create_task(self.updateTable())
+                        for _ in range(len(self.game.playersInGame)):
+                            await self.updateTable()
+                            await asyncio.sleep(1)
                         await update_task
                         await asyncio.sleep(10)
                         self.game.resetGame()
-
                         await set_room_isFinished(False)
                         await self.beginGame()
 
@@ -142,7 +145,6 @@ class GameConsumer(AsyncWebsocketConsumer):
 
 
 
-            print("MOREEEEEEEE")
             # if self.game.playerInMove == "":
             #     if self.game.round ==4:
             #         winner = self.game.getWinner()
@@ -177,6 +179,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         await nextPlayer(self.game.playerInMove)
         await self.updateTable()
         print("dupa")
+
     async def updateTable(self):
         roomData = await get_model("Room")
         playersData = await get_model("PlayerInGame")
@@ -204,32 +207,41 @@ class GameConsumer(AsyncWebsocketConsumer):
         # add the new player to the watchers list
         self.game.addWatcher(data['player_nick'])
 
-    def disconnect(self, close_code):
-        # Remove the consumer from the group
-        self.channel_layer.group_discard(
-            self.chat_room,
-            self.channel_name
-        )
+    async def disconnect(self, close_code):
+        await remove_player(self.ip_address)
+        # Perform other necessary updates
+        await self.update_data_in_rankingomat()
+        await self.update_occupancy()
+
     async def update_data_in_rankingomat(self):
         players = await get_model("PlayerInGame")
         for player in players:
-            name = player['player_nick']
-            tokens = player['tokens']
-            data = {'username': name, 'tokens': tokens}
+            data = {
+                'username': player['player_nick'],
+                'tokens': player['tokens'] 
+            }
             async with httpx.AsyncClient() as client:
-                url = "http://localhost:8001/update_tokens/"
+                url = "http://host.docker.internal:8001/update_tokens/"
                 response = await client.post(url, json=data)
-                print(response, "POOOOOOOOOMOCY")
                 return response
+            
+    # Tested and works perfectly        
     async def update_occupancy(self):
         occupancy = await get_model("PlayerInGame")
-        occupancy = len(occupancy)
-        data = {'occupancy': occupancy}
+        occupancy_count = len(occupancy)
+        data = {
+            'new_occupation': occupancy_count,
+            'ip': '9000'  # Server IP
+        }
         async with httpx.AsyncClient() as client:
-            url = "http://localhost:8002/update/"
+            url = "http://host.docker.internal:8002/update/"
             response = await client.post(url, json=data)
-            print(response, "POOOOOOOOOMOCYZZZZZZZZZZZZZ")
             return response
+
+@database_sync_to_async
+def remove_player(ip_address):
+    print("Remove player")
+    PlayerInGame.objects.filter(ip_address=ip_address).delete()
 
 @sync_to_async()
 def get_model(model):
