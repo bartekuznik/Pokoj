@@ -29,31 +29,6 @@ class GameConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_add(
             self.chat_room,
             self.channel_name)
-        await self.channel_layer.group_send(
-        self.chat_room,
-        {
-            'type': 'player_joined',
-            'player_nick': self.scope['user'].username,
-            # Include any other relevant player info here
-        }
-    )
-        
-    # New handler methods to broadcast join and leave messages
-    async def player_joined(self, event):
-        # Send message to WebSocket
-        await self.send(text_data=json.dumps({
-            'type': 'PlayerJoined',
-            'player_nick': event['player_nick'],
-            # Include any other relevant player info here
-        }))
-
-    async def player_left(self, event):
-        # Send message to WebSocket
-        await self.send(text_data=json.dumps({
-            'type': 'PlayerLeft',
-            'player_nick': event['player_nick'],
-            # Include any other relevant player info here
-        }))
 
     async def receive(self, text_data):
         print(text_data)
@@ -233,21 +208,10 @@ class GameConsumer(AsyncWebsocketConsumer):
         self.game.addWatcher(data['player_nick'])
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_send(
-        self.chat_room,
-        {
-            'type': 'player_left',
-            'player_nick': self.scope['user'].username,
-            # Include any other relevant player info here
-        })
         await remove_player(self.ip_address)
         # Perform other necessary updates
         await self.update_data_in_rankingomat()
         await self.update_occupancy()
-        player_count = await get_player_count()
-        if player_count == 0:
-            # No players are connected, so reset the room data
-            await reset_room()
 
     async def update_data_in_rankingomat(self):
         players = await get_model("PlayerInGame")
@@ -267,26 +231,12 @@ class GameConsumer(AsyncWebsocketConsumer):
         occupancy_count = len(occupancy)
         data = {
             'new_occupation': occupancy_count,
-            'ip': '9000'  # Server IP
+            'ip': '9001'  # Server IP
         }
         async with httpx.AsyncClient() as client:
             url = "http://host.docker.internal:8002/update/"
             response = await client.post(url, json=data)
             return response
-
-@database_sync_to_async
-def get_player_count():
-    # Get the number of PlayerInGame instances from the database
-    return PlayerInGame.objects.count()
-
-@database_sync_to_async
-def reset_room():
-    # Get the room and update the fields as specified
-    room = Room.objects.get(id=1)
-    room.cardsOnTable = []
-    room.nextPlayer = ''
-    room.tokensOnTable = 150
-    room.save()
 
 @database_sync_to_async
 def remove_player(ip_address):

@@ -1,0 +1,10 @@
+django
+djangorestframework
+django-cors-headers
+gunicorn
+daphne
+channels
+numpy
+scipy
+joblib
+httpx
